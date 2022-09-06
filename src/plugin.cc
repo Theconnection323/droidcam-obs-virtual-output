@@ -239,8 +239,13 @@ static void *control_thread(void *data) {
         if (have_audio) {
             webcam_audio_rate  = ah->info.sample_rate;
             webcam_speaker_layout = to_speaker_layout(ah->info.channels);
+
+            if (webcam_speaker_layout == SPEAKERS_UNKNOWN) {
+                elog("WARN: unknown webcam speaker layout, channels=%d", ah->info.channels);
+                have_audio = false;
+            }
         }
-        else {
+        if (!have_audio) {
             webcam_audio_rate = plugin->default_sample_rate;
             webcam_speaker_layout = plugin->default_speaker_layout;
         }
@@ -289,11 +294,6 @@ static void *control_thread(void *data) {
             plugin->audio_frame_size_bytes = (SAMPLE_BITS/8) * to_channels(webcam_speaker_layout);
             plugin->audio_conv.speakers = webcam_speaker_layout;
             plugin->audio_conv.samples_per_sec = webcam_audio_rate;
-
-            if (plugin->audio_conv.speakers == SPEAKERS_UNKNOWN) {
-                elog("WARN: unknown webcam speaker layout: %d", plugin->audio_conv.speakers);
-                have_audio = false;
-            }
             obs_output_set_audio_conversion(plugin->output, &plugin->audio_conv);
         }
 
