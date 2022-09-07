@@ -22,10 +22,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "structs.h"
 
 #if DROIDCAM_OVERRIDE==0
+
+#if LIBOBS_API_MAJOR_VER==28
 #include <QtGui/QAction>
+#else
+#include <QtWidgets/QAction>
+#endif
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMainWindow>
 #include "obs-frontend-api.h"
+
 #endif
 
 const char *PluginVer  = "011";
@@ -220,6 +226,7 @@ static void *control_thread(void *data) {
             continue;
         }
 
+        int flags = 0;
         int webcam_w, webcam_h, webcam_interval;
 
         int webcam_audio_rate;
@@ -229,6 +236,7 @@ static void *control_thread(void *data) {
             webcam_w = vh->info.width;
             webcam_h = vh->info.height;
             webcam_interval = vh->info.interval;
+            flags |= OBS_OUTPUT_VIDEO;
         }
         else {
             webcam_w = plugin->default_w;
@@ -240,7 +248,10 @@ static void *control_thread(void *data) {
             webcam_audio_rate  = ah->info.sample_rate;
             webcam_speaker_layout = to_speaker_layout(ah->info.channels);
 
-            if (webcam_speaker_layout == SPEAKERS_UNKNOWN) {
+            if (webcam_speaker_layout != SPEAKERS_UNKNOWN) {
+                flags |= OBS_OUTPUT_AUDIO;
+            }
+            else {
                 elog("WARN: unknown webcam speaker layout, channels=%d", ah->info.channels);
                 have_audio = false;
             }
@@ -332,15 +343,23 @@ static bool output_start(void *data) {
         output_stop(data, 0);
     }
 
-    video_t *video = obs_output_video(plugin->output);
-    int width = video_output_get_width(video);
-    int height = video_output_get_height(video);
-    int format = video_output_get_format(video);
-
     struct obs_video_info ovi;
     obs_get_video_info(&ovi);
+    int width  = ovi.output_width;
+    int height = ovi.output_height;
     int interval = ovi.fps_den * RefTime::UNITS / ovi.fps_num;
+    enum video_format format = ovi.output_format;
     dlog("output_start: video %dx%d interval %lld format %d", width, height, interval, format);
+
+    #if DEBUG==1
+    video_t *video = obs_output_video(plugin->output);
+    if (video_output_get_width(video) != width)
+        elog("output width mismatch !!");
+    if (video_output_get_height(video) != height)
+        elog("output height mismatch !!");
+    if (video_output_get_format(video) != format)
+        elog("output format mismatch !!");
+    #endif
 
     plugin->have_video = false;
     plugin->default_w = width;
@@ -544,6 +563,9 @@ bool obs_module_load(void) {
         }
 
         if (checked) {
+            obs_output_set_media(droidcam_virtual_output,
+                obs_get_video(), obs_get_audio());
+
             if (!obs_output_start(droidcam_virtual_output)) {
                 obs_output_force_stop(droidcam_virtual_output);
                 tools_menu_action->setChecked(false);
