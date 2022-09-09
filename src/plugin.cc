@@ -271,8 +271,8 @@ static void *control_thread(void *data) {
         }
 
         const bool video_ok =
-            (webcam_w - plugin->shift_x - plugin->shift_x - plugin->video_conv.width < 4) &&
-            (webcam_h - plugin->shift_y - plugin->shift_y - plugin->video_conv.height < 4);
+            (webcam_w - plugin->shift_x - plugin->shift_x - plugin->video_conv.width <= 4) &&
+            (webcam_h - plugin->shift_y - plugin->shift_y - plugin->video_conv.height <= 4);
 
         const bool audio_ok =
             plugin->audio_conv.speakers == webcam_speaker_layout &&
