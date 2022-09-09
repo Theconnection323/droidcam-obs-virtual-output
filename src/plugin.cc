@@ -353,21 +353,22 @@ static bool output_start(void *data) {
         output_stop(data, 0);
     }
 
+    video_t *video = obs_output_video(plugin->output);
+    int width = video_output_get_width(video);
+    int height = video_output_get_height(video);
+    int format = video_output_get_format(video);
+
     struct obs_video_info ovi;
     obs_get_video_info(&ovi);
-    int width  = ovi.output_width;
-    int height = ovi.output_height;
     int interval = ovi.fps_den * RefTime::UNITS / ovi.fps_num;
-    enum video_format format = ovi.output_format;
     dlog("output_start: video %dx%d interval %lld format %d", width, height, interval, format);
 
     #if DEBUG==1
-    video_t *video = obs_output_video(plugin->output);
-    if (video_output_get_width(video) != width)
+    if (ovi.output_width != width)
         elog("output width mismatch !!");
-    if (video_output_get_height(video) != height)
+    if (ovi.output_height != height)
         elog("output height mismatch !!");
-    if (video_output_get_format(video) != format)
+    if (ovi.output_format != format)
         elog("output format mismatch !!");
     #endif
 
